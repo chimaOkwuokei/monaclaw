@@ -9,8 +9,8 @@ export default function Footer() {
           
           {/* Left: Brand / Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-md flex items-center justify-center shadow-[0_0_10px_rgba(88,80,236,0.3)]">
-               <img src="/monaclaw.svg" alt="" />
+            <div className="w-8 h-8 rounded-md flex items-center justify-center">
+               <img src="/logo.svg" alt="" />
             </div>
             <span className="text-white font-bold text-sm tracking-wide">
               MonaCLAW
