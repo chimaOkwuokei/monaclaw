@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, X, Shuffle } from 'lucide-react'; 
+import { Menu, X, Shuffle } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
@@ -19,7 +19,7 @@ export default function Navbar() {
     <header className="sticky top-0 left-0 w-full z-50 bg-[#05070c] border-b border-white/5">
       <div className="mx-auto px-6 md:px-8">
         <div className="flex items-center justify-between h-20">
-          
+
           {/* Left: Brand / Logo */}
           <Link to="/" className="shrink-0">
             <span className="text-gray-200 text-lg tracking-wide">
@@ -33,11 +33,10 @@ export default function Navbar() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`text-sm transition-colors duration-200 ${
-                  location.pathname === item.path 
-                    ? 'text-white' 
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
+                className={`text-sm transition-colors duration-200 ${location.pathname === item.path
+                  ? 'text-white'
+                  : 'text-gray-400 hover:text-gray-200'
+                  }`}
               >
                 {item.name}
               </Link>
@@ -48,7 +47,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-6">
             {/* The crossed icon from the image */}
             <button className="text-gray-500 hover:text-gray-300 transition-colors">
-               <img src="/x.svg" alt="" />
+              <img src="/x.svg" alt="" />
             </button><button onClick={() => navigate('/x-login')} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]">
               Connect
             </button>
@@ -56,7 +55,7 @@ export default function Navbar() {
 
           {/* Mobile Menu Toggle */}
           <div className="md:hidden flex items-center">
-            <button 
+            <button
               onClick={() => setIsOpen(!isOpen)}
               className="text-gray-300 hover:text-white"
             >
@@ -81,16 +80,17 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="pt-4 border-t border-white/10 flex flex-col gap-4">
-               <button className="w-full text-left text-gray-400 hover:text-white flex items-center gap-2">
-                  <Shuffle className="w-4 h-4" /> Switch Network
-               </button>
-               <button className="w-full bg-[#3b82f6] text-white font-semibold px-4 py-2.5 rounded-lg text-center">
+              <button className="w-full text-left text-gray-400 hover:text-white flex items-center gap-2">
+                <Shuffle className="w-4 h-4" /> Switch Network
+              </button>
+              <button onClick={() => navigate('/x-login')} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]">
                 Connect
               </button>
             </div>
           </div>
         </div>
-      )}
-    </header>
+      )
+      }
+    </header >
   );
 }
