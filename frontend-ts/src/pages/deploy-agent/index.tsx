@@ -32,7 +32,7 @@ const formSchema = z.object({
   strategyDescription: z.string().min(10, { message: "Description must be at least 10 chars" }),
   riskLevel: z.string().min(1, { message: "Select a risk level" }),
   tradingInterval: z.string().min(1, { message: "Required" }),
-  maxPosition: z.string().min(1, { message: "Required" }), // Keeping as string for input, parse later if needed
+  minPosition: z.string().min(1, { message: "Required" }), // Keeping as string for input, parse later if needed
   profitTarget: z.string().min(1, { message: "Required" }),
   stopLoss: z.string().min(1, { message: "Required" }),
 });
@@ -53,7 +53,7 @@ export default function DeployAgentPage() {
       strategyDescription: "Buy when price breaks resistance & sell when momentum slows",
       riskLevel: "Low",
       tradingInterval: "1h",
-      maxPosition: "100",
+      minPosition: "10",
       profitTarget: "40",
       stopLoss: "40",
     },
@@ -79,7 +79,7 @@ export default function DeployAgentPage() {
       valid = await form.trigger(["agentName", "tokenSymbol", "strategyType"]);
     } else if (currentTab === 1) {
       valid = await form.trigger([
-        "tradingGoal", "strategyDescription", "riskLevel", "tradingInterval", "maxPosition", "profitTarget", "stopLoss"
+        "tradingGoal", "strategyDescription", "riskLevel", "tradingInterval", "minPosition", "profitTarget", "stopLoss"
       ]);
     }
     
@@ -325,10 +325,10 @@ export default function DeployAgentPage() {
                    />
                    <FormField
                       control={form.control}
-                      name="maxPosition"
+                      name="minPosition"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs uppercase text-gray-500 font-bold">MAX POSITION (USDC)</FormLabel>
+                          <FormLabel className="text-xs uppercase text-gray-500 font-bold">MIN POSITION (USDC)</FormLabel>
                           <FormControl>
                              <Input {...field} className="bg-blue-50/50 border-blue-100 text-slate-700" />
                           </FormControl>
@@ -403,7 +403,7 @@ export default function DeployAgentPage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Max Position</span>
-                      <span className="text-[#007BFF] font-medium">{form.getValues("maxPosition")}</span>
+                      <span className="text-[#007BFF] font-medium">{form.getValues("minPosition")}</span>
                     </div>
                   </div>
                 </div>

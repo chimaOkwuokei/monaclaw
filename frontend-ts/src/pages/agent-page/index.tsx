@@ -233,8 +233,8 @@ export default function Agent() {
                                             key={tag}
                                             onClick={() => toggleTag(tag)}
                                             className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border ${isSelected
-                                                    ? 'bg-[#007BFF] text-white border-[#007BFF] shadow-sm shadow-blue-200'
-                                                    : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300'
+                                                ? 'bg-[#007BFF] text-white border-[#007BFF] shadow-sm shadow-blue-200'
+                                                : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300'
                                                 }`}
                                         >
                                             {tag}
@@ -312,6 +312,28 @@ export default function Agent() {
                             </button>
                         </section>
 
+                        <div className="border border-blue-100 rounded-2xl p-1 shadow-sm bg-white">
+                            <div className="flex justify-between items-center px-6 py-4 border-b border-dashed border-blue-100">
+                                <div className="flex items-center gap-2 text-[#007BFF] font-bold text-sm uppercase">
+                                    <RefreshCw size={16} /> Open Position
+                                </div>
+                                <span className="text-xs text-slate-400">0 active</span>
+                            </div>
+                            <div className="p-8">
+                                <EmptyState icon={Clock} title="No Open Position" desc="Buybacks will appear here once executed" />
+                            </div>
+                        </div>
+                        <div className="border border-blue-100 rounded-2xl p-1 shadow-sm bg-white">
+                            <div className="flex justify-between items-center px-6 py-4 border-b border-dashed border-blue-100">
+                                <div className="flex items-center gap-2 text-[#007BFF] font-bold text-sm uppercase">
+                                    <RefreshCw size={16} /> Withdrawal History
+                                </div>
+                                <span className="text-xs text-slate-400">0 active</span>
+                            </div>
+                            <div className="p-8">
+                                <EmptyState icon={Clock} title="No withdrawal history" desc="Buybacks will appear here once executed" />
+                            </div>
+                        </div>
                         {/* BuyBack History (Empty) */}
                         <div className="border border-blue-100 rounded-2xl p-1 shadow-sm bg-white">
                             <div className="flex justify-between items-center px-6 py-4 border-b border-dashed border-blue-100">
