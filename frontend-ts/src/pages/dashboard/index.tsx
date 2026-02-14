@@ -6,9 +6,10 @@ import {
     ExternalLink,
     Search,
     Settings,
-    ChevronDown
+    ChevronDown,
+    LogOut
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 // --- Types & Mock Data ---
 
@@ -122,8 +123,9 @@ const AgentCard = ({ agent }: { agent: Agent }) => {
 // --- Main Page Component ---
 
 export default function OperatorDashboard() {
-    const [hasAgents, setHasAgents] = useState(true); // Default to true to see the UI
-    // const navigate = useNavigate();
+    const [hasAgents, _setHasAgents] = useState(true); // Default to true to see the UI
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const navigate = useNavigate();
 
     return (
         <div className="min-h-screen bg-white text-slate-800 ">
@@ -134,15 +136,20 @@ export default function OperatorDashboard() {
                         <div className="flex items-center gap-2">
                             {/* Logo Placeholder */}
                             <img src="/logo.svg" alt="" />
-                            <span className="text-xl  text-slate-900">Monaclaw</span>
+                            <Link to="/" className="shrink-0">
+                                <span className="text-lg tracking-wide">
+                                    Monaclaw
+                                </span>
+                            </Link>
+
                         </div>
                     </div>
 
                     <div className="flex items-center gap-4">
                         <nav className="hidden md:flex gap-8 text-sm font-medium text-slate-500">
-                            <a href="#" className="hover:text-[#007BFF]">Explore</a>
+                            <a href="/view-agent" className="hover:text-[#007BFF]">Explore</a>
                             <a href="#" className="hover:text-[#007BFF]">Leaderboard</a>
-                            <a href="#" className="hover:text-[#007BFF]">Dashboard</a>
+                            <a href="/dashboard" className="hover:text-[#007BFF]">Dashboard</a>
                         </nav>
                     </div>
 
@@ -150,20 +157,49 @@ export default function OperatorDashboard() {
                     <div className="flex items-center gap-4">
 
                         <button className="text-gray-500 hover:text-gray-300 transition-colors">
-                            <img src="/x.svg" alt="" />
+                            <img src="/x.svg" alt="X" />
                         </button>
-                        <div className="flex items-center gap-2 border rounded-full px-3 py-1.5 cursor-pointer hover:bg-gray-50">
-                            <div className="w-6 h-6 bg-slate-200 overflow-hidden">
-                                <img src="/profile.svg" alt="User" />
+
+                        {/* Container needs relative positioning for the dropdown */}
+                        <div className="relative">
+
+                            {/* Profile Trigger */}
+                            <div
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="flex items-center gap-2 border rounded-full px-3 py-1.5 cursor-pointer hover:bg-gray-50 select-none transition-colors"
+                            >
+                                <div className="w-6 h-6 bg-slate-200 overflow-hidden rounded-full">
+                                    <img src="/profile.svg" alt="User" className="w-full h-full object-cover" />
+                                </div>
+                                <span className="text-sm font-semibold">HaajDefi</span>
+                                <ChevronDown
+                                    size={14}
+                                    className={`text-slate-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
+                                />
                             </div>
-                            <span className="text-sm font-semibold">HaajDefi</span>
-                            <ChevronDown size={14} className="text-slate-400" />
+
+                            {/* Dropdown Menu */}
+                            {isDropdownOpen && (
+                                <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <button
+                                        onClick={() => {
+                                            console.log("Logging out...");
+                                            // Add your actual logout logic here
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-600 flex items-center gap-2 transition-colors"
+                                    >
+                                        <LogOut size={14} />
+                                        Logout
+                                    </button>
+                                </div>
+                            )}
                         </div>
+
                     </div>
                 </div>
             </header>
             {/* --- Dev Toggle --- */}
-            <div className="fixed top-4 right-4 z-50">
+            {/* <div className="fixed top-4 right-4 z-50">
                 <label className="flex items-center gap-2 cursor-pointer bg-slate-900 text-white px-4 py-2 rounded-full text-xs  shadow-xl">
                     <input
                         type="checkbox"
@@ -173,12 +209,12 @@ export default function OperatorDashboard() {
                     />
                     Toggle View ({hasAgents ? 'Filled' : 'Empty'})
                 </label>
-            </div>
+            </div> */}
 
             <div className="max-w-6xl mx-auto">
 
                 {/* --- Header --- */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-semibold text-[#0F172A] mb-2 uppercase tracking-tight">Operator Dashboard</h1>
                         <div className="flex items-center gap-4 text-xs text-slate-500">
@@ -191,7 +227,7 @@ export default function OperatorDashboard() {
                         </div>
                     </div>
 
-                    <button className="bg-[#007BFF] hover:bg-[#007BFF] text-white px-6 py-3 rounded-xl text-sm  flex items-center gap-2 shadow-lg  transition-all">
+                    <button onClick={() => navigate('/deploy-agent')} className="bg-[#007BFF] hover:bg-[#007BFF] text-white px-6 py-3 rounded-xl text-sm  flex items-center gap-2 shadow-lg  transition-all">
                         <Plus size={18} /> Create Agent
                     </button>
                 </div>

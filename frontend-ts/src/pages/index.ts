@@ -4,6 +4,7 @@ import ViewAgent from "./view-agent";
 import AgentPage from "./agent-page";
 import OperatorDashboard from "./dashboard";
 import PublicPage from "./public-page";
+import XLogin from "./x-login";
 
 export {
     Landing,
@@ -11,5 +12,6 @@ export {
     ViewAgent,
     AgentPage,
     OperatorDashboard,
-    PublicPage
+    PublicPage,
+    XLogin
 }

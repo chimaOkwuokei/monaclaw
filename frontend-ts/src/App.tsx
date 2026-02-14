@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Layout from "./components/ui/layout";
-import { OperatorDashboard, DeployAgent, Landing, PublicPage, ViewAgent, AgentPage } from "./pages";
+import { OperatorDashboard, DeployAgent, Landing, PublicPage, ViewAgent, AgentPage, XLogin } from "./pages";
 
 function App() {
   return (
@@ -13,6 +13,7 @@ function App() {
           <Route path="/dashboard" element={<OperatorDashboard />} />
            <Route path="/manage-agent" element={<AgentPage />} />
           <Route path="/public-page" element={<PublicPage />} />
+          <Route path="/x-login" element={<XLogin />} />
         </Route>
       </Routes>
     </Router>

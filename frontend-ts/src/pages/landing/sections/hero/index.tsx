@@ -75,7 +75,7 @@ export default function HeroSection() {
         {/* Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-24">
           <Link
-            to="/deploy-agent"
+            to="/x-login"
             className="group bg-[#3b82f6] hover:bg-[#2563eb] text-white px-8 py-3.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-[0_0_25px_rgba(59,130,246,0.4)] hover:shadow-[0_0_35px_rgba(59,130,246,0.6)]"
           >
             Deploy Agent
@@ -93,38 +93,38 @@ export default function HeroSection() {
 
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-10 gap-x-8 border-t border-white/5 md:border-t-0 pt-8 md:pt-0">
+        {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-y-10 gap-x-8 border-t border-white/5 md:border-t-0 pt-8 md:pt-0"> */}
 
           {/* Stat 1 */}
-          <div className="relative group">
+          {/* <div className="relative group">
             <p className="text-2xl md:text-3xl font-bold text-white mb-2 tracking-tight">$1,668,186</p>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Volume Traded</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Volume Traded</p> */}
             {/* Green linear Line */}
-            <div className="absolute -bottom-4 left-0 w-full h-px bg-linear-to-r from-[#DDFE5F] to-transparent"></div>
-          </div>
+            {/* <div className="absolute -bottom-4 left-0 w-full h-px bg-linear-to-r from-[#DDFE5F] to-transparent"></div>
+          </div> */}
 
           {/* Stat 2 */}
-          <div className="relative group">
+          {/* <div className="relative group">
             <p className="text-2xl md:text-3xl font-bold text-white mb-2 tracking-tight">$222,398</p>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Token Buybacks</p>
             <div className="absolute -bottom-4 left-0 w-full h-px bg-linear-to-r from-[#DDFE5F] to-transparent"></div>
-          </div>
+          </div> */}
 
           {/* Stat 3 */}
-          <div className="relative group">
+          {/* <div className="relative group">
             <p className="text-2xl md:text-3xl font-bold text-white mb-2 tracking-tight">88</p>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Active Agents</p>
             <div className="absolute -bottom-4 left-0 w-full h-px bg-linear-to-r from-[#DDFE5F] to-transparent"></div>
-          </div>
+          </div> */}
 
           {/* Stat 4 */}
-          <div className="relative group">
+          {/* <div className="relative group">
             <p className="text-2xl md:text-3xl font-bold text-white mb-2 tracking-tight">61</p>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Tokens Live</p>
             <div className="absolute -bottom-4 left-0 w-full h-px bg-linear-to-r from-[#DDFE5F] to-transparent"></div>
           </div>
 
-        </div>
+        </div> */}
       </div>
     </section>
   );
