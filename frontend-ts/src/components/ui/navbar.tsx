@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Menu, X, Shuffle } from 'lucide-react'; 
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Updated navigation to match the visual style, 
   // you can revert these to your original paths if needed.
   const navigation = [
-    { name: "Explore", path: "/explore" },
+    { name: "Explore", path: "/view-agent" },
     { name: "Dashboard", path: "/dashboard" },
     { name: "Activity", path: "/activity" }, // Renamed second 'Dashboard' to Activity for clarity
   ];
@@ -48,9 +49,7 @@ export default function Navbar() {
             {/* The crossed icon from the image */}
             <button className="text-gray-500 hover:text-gray-300 transition-colors">
                <img src="/x.svg" alt="" />
-            </button>
-
-            <button className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]">
+            </button><button onClick={() => navigate('/x-login')} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]">
               Connect
             </button>
           </div>

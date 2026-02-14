@@ -22,7 +22,7 @@ export default function CTASection() {
         {/* Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
           <Link
-            to="/deploy-agent"
+            to="/x-login"
             className="group bg-[#3b82f6] hover:bg-[#2563eb] text-white px-8 py-3.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-[0_0_25px_rgba(59,130,246,0.4)] hover:shadow-[0_0_35px_rgba(59,130,246,0.6)]"
           >
             Deploy Agent

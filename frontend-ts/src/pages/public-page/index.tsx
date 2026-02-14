@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
     ExternalLink,
     Copy,
@@ -10,7 +10,8 @@ import {
     ArrowUpRight,
     Wallet,
     CheckCircle2,
-    ArrowLeft // Added back arrow
+    ArrowLeft, // Added back arrow
+    LogOut
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -59,6 +60,7 @@ const Card = ({ children, className = "" }: { children: React.ReactNode, classNa
 export default function PublicPage() {
     const navigate = useNavigate();
     const location = useLocation();
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     // 1. Retrieve Agent Data
     const agentData = (location.state as { agent: Agent })?.agent || {
@@ -92,14 +94,46 @@ export default function PublicPage() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 border rounded-full px-3 py-1.5 cursor-pointer hover:bg-gray-50">
-                            <div className="w-6 h-6 bg-slate-200 overflow-hidden rounded-full">
-                                {/* User Avatar Placeholder */}
-                                <div className="w-full h-full bg-slate-300"></div>
+
+                        <button className="text-gray-500 hover:text-gray-300 transition-colors">
+                            <img src="/x.svg" alt="X" />
+                        </button>
+
+                        {/* Container needs relative positioning for the dropdown */}
+                        <div className="relative">
+
+                            {/* Profile Trigger */}
+                            <div
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="flex items-center gap-2 border rounded-full px-3 py-1.5 cursor-pointer hover:bg-gray-50 select-none transition-colors"
+                            >
+                                <div className="w-6 h-6 bg-slate-200 overflow-hidden rounded-full">
+                                    <img src="/profile.svg" alt="User" className="w-full h-full object-cover" />
+                                </div>
+                                <span className="text-sm font-semibold">HaajDefi</span>
+                                <ChevronDown
+                                    size={14}
+                                    className={`text-slate-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
+                                />
                             </div>
-                            <span className="text-sm font-semibold">HaajDefi</span>
-                            <ChevronDown size={14} className="text-slate-400" />
+
+                            {/* Dropdown Menu */}
+                            {isDropdownOpen && (
+                                <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <button
+                                        onClick={() => {
+                                            console.log("Logging out...");
+                                            // Add your actual logout logic here
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-600 flex items-center gap-2 transition-colors"
+                                    >
+                                        <LogOut size={14} />
+                                        Logout
+                                    </button>
+                                </div>
+                            )}
                         </div>
+
                     </div>
                 </div>
             </header>

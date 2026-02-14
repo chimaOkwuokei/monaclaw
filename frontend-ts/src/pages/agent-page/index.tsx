@@ -11,7 +11,8 @@ import {
     TrendingUp,
     ChevronRight,
     LogOut,
-    ArrowLeft // Added for Back Button
+    ArrowLeft,
+    Activity,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -24,7 +25,16 @@ interface Agent {
     balance: string;
     avatarSeed: string;
 }
-
+const AVAILABLE_TAGS = [
+    'New Momentum',
+    'Entertainment',
+    'Politic',
+    'Sport',
+    'Tech',
+    'Finance',
+    'Arbitrage',
+    'Sentiment'
+];
 // --- Reusable Components ---
 
 const StatCard = ({ label, value, subLabel }: { label: string, value: string, subLabel?: string }) => (
@@ -56,6 +66,7 @@ export default function Agent() {
     const [riskLevel, setRiskLevel] = useState("Low");
     const navigate = useNavigate();
     const location = useLocation();
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     // Retrieve the agent passed from the previous screen
     // Fallback data provided in case page is refreshed directly
@@ -65,7 +76,16 @@ export default function Agent() {
         createdTime: "Just now",
         status: "Active"
     };
+    const [selectedTags, setSelectedTags] = useState<string[]>(['New Momentum']);
 
+    // 3. Handler to toggle selection
+    const toggleTag = (tag: string) => {
+        if (selectedTags.includes(tag)) {
+            setSelectedTags(selectedTags.filter(t => t !== tag));
+        } else {
+            setSelectedTags([...selectedTags, tag]);
+        }
+    };
     return (
         <div className="min-h-screen bg-white text-slate-800">
 
@@ -92,15 +112,44 @@ export default function Agent() {
                     <div className="flex items-center gap-4">
 
                         <button className="text-gray-500 hover:text-gray-300 transition-colors">
-                            <img src="/x.svg" alt="" />
+                            <img src="/x.svg" alt="X" />
                         </button>
-                        <div className="flex items-center gap-2 border rounded-full px-3 py-1.5 cursor-pointer hover:bg-gray-50">
-                            <div className="w-6 h-6 bg-slate-200 overflow-hidden">
-                                <img src="/profile.svg" alt="User" />
+
+                        {/* Container needs relative positioning for the dropdown */}
+                        <div className="relative">
+
+                            {/* Profile Trigger */}
+                            <div
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="flex items-center gap-2 border rounded-full px-3 py-1.5 cursor-pointer hover:bg-gray-50 select-none transition-colors"
+                            >
+                                <div className="w-6 h-6 bg-slate-200 overflow-hidden rounded-full">
+                                    <img src="/profile.svg" alt="User" className="w-full h-full object-cover" />
+                                </div>
+                                <span className="text-sm font-semibold">HaajDefi</span>
+                                <ChevronDown
+                                    size={14}
+                                    className={`text-slate-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
+                                />
                             </div>
-                            <span className="text-sm font-semibold">HaajDefi</span>
-                            <ChevronDown size={14} className="text-slate-400" />
+
+                            {/* Dropdown Menu */}
+                            {isDropdownOpen && (
+                                <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <button
+                                        onClick={() => {
+                                            console.log("Logging out...");
+                                            // Add your actual logout logic here
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-600 flex items-center gap-2 transition-colors"
+                                    >
+                                        <LogOut size={14} />
+                                        Logout
+                                    </button>
+                                </div>
+                            )}
                         </div>
+
                     </div>
                 </div>
             </header>
@@ -175,15 +224,29 @@ export default function Agent() {
                         {/* Strategy Section */}
                         <section>
                             <SectionHeader icon={TrendingUp} title="Strategy" subText="Guides what your agent trades and how it approaches" />
+
                             <div className="flex flex-wrap gap-2 mb-4">
-                                <span className="px-4 py-1.5 rounded-full text-xs font-semibold bg-[#007BFF] text-white shadow-sm shadow-blue-200">New Momentum</span>
-                                {['Entertainment', 'Politic', 'Sport', 'Tech', 'Finance', 'Arbitrage', 'Sentiment'].map(tag => (
-                                    <span key={tag} className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-500 hover:border-blue-300 cursor-pointer transition-colors">
-                                        {tag}
-                                    </span>
-                                ))}
+                                {AVAILABLE_TAGS.map(tag => {
+                                    const isSelected = selectedTags.includes(tag);
+                                    return (
+                                        <button
+                                            key={tag}
+                                            onClick={() => toggleTag(tag)}
+                                            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border ${isSelected
+                                                    ? 'bg-[#007BFF] text-white border-[#007BFF] shadow-sm shadow-blue-200'
+                                                    : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300'
+                                                }`}
+                                        >
+                                            {tag}
+                                        </button>
+                                    );
+                                })}
                             </div>
-                            <button className="bg-[#007BFF] text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm shadow-blue-200 w-24 hover:bg-blue-700 transition-colors">
+
+                            <button
+                                onClick={() => console.log('Saved tags:', selectedTags)}
+                                className="bg-[#007BFF] text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm shadow-blue-200 w-24 hover:bg-blue-700 transition-colors"
+                            >
                                 Save
                             </button>
                         </section>
@@ -267,55 +330,156 @@ export default function Agent() {
                     {/* --- RIGHT COLUMN (1/3 width) --- */}
                     <div className="space-y-6">
 
-                        {/* Wallet Card */}
+                        {/* 1. Token Card */}
                         <div className="bg-white border border-blue-100 rounded-2xl p-6 shadow-sm">
-                            <div className="flex items-center gap-2 mb-6">
-                                <span className="text-xs font-bold text-slate-400 uppercase">WALLET</span>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400">
+                                    $
+                                </div>
+                                <span className="text-xs font-bold text-slate-400 uppercase">TOKEN</span>
                             </div>
 
-                            <div className="mb-6">
-                                <p className="text-xs text-slate-500 mb-1">Portfolio Value</p>
-                                <h3 className="text-2xl font-bold text-slate-800">$1,240.00</h3>
-                                <p className="text-xs text-slate-400">$1,240.00 USDC liquid</p>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-bold text-slate-700">$ HAAJ</h3>
+                                <button className="bg-[#3B82F6] hover:bg-blue-600 text-white p-2 rounded-lg shadow-sm transition-colors">
+                                    <ExternalLink size={14} />
+                                </button>
+                            </div>
+
+                            <div className="relative mb-6">
+                                <input
+                                    readOnly
+                                    value="0xf326d5541483c51483cf79390f9067c6891293....."
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-lg py-3 px-4 text-xs text-slate-400 outline-none font-mono"
+                                />
+                                <Copy size={14} className="absolute right-3 top-3.5 text-slate-400 cursor-pointer hover:text-blue-500" />
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400 font-medium">Price</span>
+                                    <span className="text-[#3B82F6] font-bold">$0.000000000000</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400 font-medium">Buyback</span>
+                                    <span className="text-[#3B82F6] font-bold">$0.00</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400 font-medium">Token Bough</span>
+                                    <span className="text-[#3B82F6] font-bold">$0.000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. Wallet Card */}
+                        <div className="bg-white border border-blue-100 rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center gap-2 mb-6">
+                                <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400">
+                                    B
+                                </div>
+                                <span className="text-xs font-bold text-slate-400 uppercase">Wallet</span>
+                            </div>
+
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    <p className="text-xs text-slate-400 mb-1">Portfolio value</p>
+                                    <h3 className="text-2xl font-bold text-slate-700">$0.00</h3>
+                                    <p className="text-xs text-slate-400 mt-1">$0.00 USDC liquid</p>
+                                </div>
+                                <button className="bg-[#3B82F6] hover:bg-blue-600 text-white p-2 rounded-lg shadow-sm transition-colors">
+                                    <RefreshCw size={14} />
+                                </button>
                             </div>
 
                             <div className="mb-4">
                                 <label className="flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase mb-2">
-                                    <span className="w-2 h-2 rounded-full bg-green-400"></span>
-                                    DEPOSIT (AUTO BRIDGE)
+                                    <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                                    DEPOSIT (AUTO BRIDGE TO POLYGON)
                                 </label>
                                 <div className="relative">
-                                    <input readOnly value="0x4528d55414B3c0f4B3CPT9390f9367c6891299......" className="w-full bg-slate-50 border border-slate-100 rounded-lg py-2 pl-3 pr-8 text-xs text-slate-400 truncate" />
-                                    <Copy size={12} className="absolute right-3 top-2.5 text-slate-400 cursor-pointer hover:text-blue-500" />
+                                    <input
+                                        readOnly
+                                        value="0xf326d5541483c51483cf79390f9067c6891293....."
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-lg py-3 px-4 text-xs text-slate-400 outline-none font-mono"
+                                    />
+                                    <Copy size={14} className="absolute right-3 top-3.5 text-slate-400 cursor-pointer hover:text-blue-500" />
                                 </div>
                             </div>
 
-                            <button className="w-full bg-[#007BFF] hover:bg-blue-700 text-white py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 shadow-sm shadow-blue-200 transition-colors">
-                                <LogOut size={16} /> Withdraw Funds
+                            <div className="flex justify-between text-[10px] text-slate-400 mb-2">
+                                <span>Min deposited : <span className="font-bold text-slate-600">$10 USDC</span></span>
+                                <span>Auto-converted to USDC</span>
+                            </div>
+
+                            <p className="text-[10px] text-slate-400 leading-relaxed mb-4 border-b border-dashed border-slate-100 pb-4">
+                                Use <span className="font-bold text-slate-600">USDC</span> on <span className="underline decoration-slate-300">Polygon</span> for instance cre Other networks (Instance) <span className="font-bold text-slate-600">Base</span> are bridged to <span className="font-bold text-slate-600">USDC</span> and can be swap in a minute..
+                            </p>
+
+                            <div className="flex gap-2 mb-6">
+                                <span className="px-4 py-1.5 rounded-lg bg-lime-50 text-lime-600 text-[10px] font-bold uppercase border border-lime-100">
+                                    Deployed
+                                </span>
+                                <span className="px-4 py-1.5 rounded-lg bg-green-50 text-green-600 text-[10px] font-bold uppercase border border-green-100">
+                                    Approved
+                                </span>
+                            </div>
+
+                            <button className="w-full bg-[#007AFF] hover:bg-blue-600 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-200 transition-colors">
+                                <LogOut size={16} className="rotate-180" /> Withdraw Funds
                             </button>
                         </div>
 
-                        {/* Twitter Connect */}
+                        {/* 3. Twitter Card */}
                         <div className="bg-white border border-blue-100 rounded-2xl p-6 shadow-sm">
                             <div className="flex items-center gap-2 mb-4">
+                                <img src="/x.svg" alt="" />
                                 <span className="text-xs font-bold text-slate-400 uppercase">TWITTER(X)</span>
                             </div>
-                            <button className="w-full bg-[#007BFF] hover:bg-slate-800 text-white py-3 rounded-lg text-xs font-bold transition-colors">
+                            <button className="w-full bg-[#007AFF] hover:bg-blue-600 text-white py-3 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-blue-200">
                                 CONNECT TWITTER (X)
                             </button>
                         </div>
 
+                        {/* 4. API Key Card */}
                         <div className="bg-white border border-blue-100 rounded-2xl p-6 shadow-sm">
-                            <div className="flex items-center gap-2 mb-4">
-                                <span className="text-xs font-bold text-slate-400 uppercase">API KEY</span>
+                            <div className="mb-4">
+                                <p className="text-xs text-slate-400 mb-2">Api Key</p>
+                                <h3 className="text-sm font-bold text-slate-900 tracking-widest">pc_agent_••••••••••••</h3>
                             </div>
-                            <p className="pb-5 font-medium">
-                                 pc_agent_..................
-                            </p>
-                             
-                            <button className="w-full bg-[#007BFF] hover:bg-slate-800 text-white py-3 rounded-lg text-xs font-bold transition-colors">
-                            Rotate Key
+                            <button className="w-full bg-[#007AFF] hover:bg-blue-600 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-blue-200">
+                                Rotate Key
                             </button>
+                        </div>
+
+                        {/* 5. Activities Card */}
+                        <div className="bg-white border border-blue-100 rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center gap-2 mb-6">
+                                <Activity size={16} className="text-slate-400" />
+                                <span className="text-xs font-bold text-slate-400 uppercase">ACTIVITIES</span>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-400 font-medium">Last Trade</span>
+                                    <span className="text-[#3B82F6] font-bold">Nill</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-400 font-medium">Interval</span>
+                                    <span className="text-[#3B82F6] font-bold">Every 60 Min</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-400 font-medium">Next Run</span>
+                                    <span className="text-[#3B82F6] font-bold">Nill</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-400 font-medium">Token Trade</span>
+                                    <span className="text-[#3B82F6] font-bold">Nill</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-400 font-medium">Win Rate</span>
+                                    <span className="text-[#3B82F6] font-bold">0 %</span>
+                                </div>
+                            </div>
                         </div>
 
                     </div>
