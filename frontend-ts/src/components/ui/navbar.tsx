@@ -1,19 +1,24 @@
 import { useState } from 'react';
 import { Menu, X, Shuffle } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { usePrivy } from '@privy-io/react-auth';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
+  const { login, authenticated, logout, user } = usePrivy();
 
   // Updated navigation to match the visual style, 
   // you can revert these to your original paths if needed.
   const navigation = [
     { name: "Explore", path: "/view-agent" },
     { name: "Dashboard", path: "/dashboard" },
-    { name: "Activity", path: "/activity" }, // Renamed second 'Dashboard' to Activity for clarity
+    { name: "Activity", path: "/#activity" }, // Renamed second 'Dashboard' to Activity for clarity
   ];
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
   return (
     <header className="sticky top-0 left-0 w-full z-50 bg-[#05070c] border-b border-white/5">
@@ -48,9 +53,27 @@ export default function Navbar() {
             {/* The crossed icon from the image */}
             <button className="text-gray-500 hover:text-gray-300 transition-colors">
               <img src="/x.svg" alt="" />
-            </button><button onClick={() => navigate('/x-login')} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]">
-              Connect
             </button>
+            {authenticated ? (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400 bg-white/5 px-2 py-1 rounded border border-white/10">
+                  {user?.wallet?.address ? formatAddress(user.wallet.address) : user?.email?.address || 'Connected'}
+                </span>
+                <button
+                  onClick={logout}
+                  className="bg-white/5 hover:bg-white/10 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors border border-white/10"
+                >
+                  Disconnect
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={login}
+                className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]"
+              >
+                Connect
+              </button>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -83,9 +106,32 @@ export default function Navbar() {
               <button className="w-full text-left text-gray-400 hover:text-white flex items-center gap-2">
                 <Shuffle className="w-4 h-4" /> Switch Network
               </button>
-              <button onClick={() => navigate('/x-login')} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]">
-                Connect
-              </button>
+              {authenticated ? (
+                <div className="space-y-3">
+                  <div className="text-xs text-gray-400 px-2 py-1 bg-white/5 rounded border border-white/10 inline-block">
+                    {user?.wallet?.address ? formatAddress(user.wallet.address) : user?.email?.address || 'Connected'}
+                  </div>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setIsOpen(false);
+                    }}
+                    className="w-full bg-white/5 hover:bg-white/10 text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors border border-white/10 text-center"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    login();
+                    setIsOpen(false);
+                  }}
+                  className="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)] text-center"
+                >
+                  Connect
+                </button>
+              )}
             </div>
           </div>
         </div>

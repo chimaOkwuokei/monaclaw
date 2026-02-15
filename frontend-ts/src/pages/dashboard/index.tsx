@@ -7,42 +7,43 @@ import {
     Search,
     Settings,
     ChevronDown,
-    LogOut
+    LogOut,
+    Loader2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { usePrivy } from '@privy-io/react-auth';
+import { createPublicClient, http } from 'viem';
+import { monadTestnet } from 'viem/chains';
+import { MONACLAW_AGENT_REGISTRY_ADDRESS, MONACLAW_AGENT_REGISTRY_ABI } from '@/lib/constants';
+import { useEffect } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 
 // --- Types & Mock Data ---
 
-export interface Agent {
+export interface AgentData {
     id: string;
     name: string;
     createdTime: string;
     status: 'Active' | 'Pause';
     pnl: string;
     balance: string;
-    avatarSeed: string;
+    avatar: string;
 }
 
-const MOCK_AGENTS: Agent[] = [
-    {
-        id: '1',
-        name: 'Crypto Blast',
-        createdTime: '14h ago',
-        status: 'Active',
-        pnl: '+$450.21',
-        balance: '$1,240.00',
-        avatarSeed: 'CryptoBlast'
-    },
-    {
-        id: '2',
-        name: 'Alpha Sniper',
-        createdTime: '2d ago',
-        status: 'Pause',
-        pnl: '+$12.50',
-        balance: '$500.00',
-        avatarSeed: 'AlphaSniper'
+const publicClient = createPublicClient({
+    chain: monadTestnet,
+    transport: http()
+});
+
+const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
+
+const formatIpfsUrl = (url: string) => {
+    if (!url) return '/icon-1.svg'; // Fallback
+    if (url.startsWith('ipfs://')) {
+        return url.replace('ipfs://', IPFS_GATEWAY);
     }
-];
+    return url;
+};
 
 // --- Sub-Components ---
 
@@ -60,12 +61,11 @@ const StatCard = ({ label, value, icon: Icon }: { label: string, value: string, 
     </div>
 );
 
-const AgentCard = ({ agent }: { agent: Agent }) => {
+const AgentCard = ({ agent }: { agent: AgentData }) => {
     const navigate = useNavigate();
     const isPaused = agent.status === 'Pause';
 
     const handleManage = () => {
-        // Navigate to manage page and pass the agent object as state
         navigate('/manage-agent', { state: { agent } });
     };
 
@@ -76,17 +76,20 @@ const AgentCard = ({ agent }: { agent: Agent }) => {
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden border border-slate-200">
                         <img
-                            src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${agent.avatarSeed}`}
+                            src={agent.avatar || "/icon-1.svg"}
                             alt="Avatar"
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = "/icon-1.svg";
+                            }}
                         />
                     </div>
                     <div>
-                        <h3 className=" text-slate-900">{agent.name}</h3>
+                        <h3 className=" text-slate-900 font-semibold">{agent.name}</h3>
                         <p className="text-xs text-slate-400">Created {agent.createdTime}</p>
                     </div>
                 </div>
-                <span className={`px-3 py-1 rounded-md text-[10px]  uppercase text-white ${isPaused ? 'bg-[#F59E0B]' : 'bg-[#3B82F6]'}`}>
+                <span className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase text-white ${isPaused ? 'bg-[#F59E0B]' : 'bg-[#3B82F6]'}`}>
                     {agent.status}
                 </span>
             </div>
@@ -123,9 +126,74 @@ const AgentCard = ({ agent }: { agent: Agent }) => {
 // --- Main Page Component ---
 
 export default function OperatorDashboard() {
-    const [hasAgents, _setHasAgents] = useState(true); // Default to true to see the UI
+    const { user, authenticated, logout } = usePrivy();
+    const [agents, setAgents] = useState<AgentData[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const navigate = useNavigate();
+
+    const userAddress = user?.wallet?.address;
+
+    useEffect(() => {
+        const fetchUserAgents = async () => {
+            if (!authenticated || !userAddress) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                // 1. Get agent IDs for creator
+                const agentIds = await publicClient.readContract({
+                    address: MONACLAW_AGENT_REGISTRY_ADDRESS,
+                    abi: MONACLAW_AGENT_REGISTRY_ABI,
+                    functionName: 'getAgentsByCreator',
+                    args: [userAddress as `0x${string}`],
+                }) as bigint[];
+
+                // 2. Fetch full agent data for each ID
+                const fetched = await Promise.all(agentIds.map(async (id) => {
+                    try {
+                        const agent = await publicClient.readContract({
+                            address: MONACLAW_AGENT_REGISTRY_ADDRESS,
+                            abi: MONACLAW_AGENT_REGISTRY_ABI,
+                            functionName: 'getAgent',
+                            args: [id],
+                        }) as any;
+
+                        const ipfsUrl = formatIpfsUrl(agent.metadataURI);
+                        const response = await fetch(ipfsUrl);
+                        let metadata: any = {};
+                        if (response.ok) {
+                            metadata = await response.json();
+                        }
+
+                        return {
+                            id: id.toString(),
+                            name: metadata.agentName || 'Unnamed Agent',
+                            createdTime: formatDistanceToNow(new Uint8Array([Number(agent.createdAt)])[0] ? new Date(Number(agent.createdAt) * 1000) : new Date(), { addSuffix: true }),
+                            status: agent.isActive ? 'Active' : 'Pause',
+                            pnl: '$0.00',
+                            balance: '$0.00',
+                            avatar: formatIpfsUrl(metadata.image)
+                        } as AgentData;
+                    } catch (err) {
+                        console.error(`Error fetching agent ${id}:`, err);
+                        return null;
+                    }
+                }));
+
+                setAgents(fetched.filter(a => a !== null) as AgentData[]);
+            } catch (error) {
+                console.error('Error fetching user agents:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchUserAgents();
+    }, [authenticated, userAddress]);
+
+    const formatAddress = (addr: string) => `${addr.slice(0, 7)}...${addr.slice(-5)}`;
 
     return (
         <div className="min-h-screen bg-white text-slate-800 ">
@@ -171,7 +239,9 @@ export default function OperatorDashboard() {
                                 <div className="w-6 h-6 bg-slate-200 overflow-hidden rounded-full">
                                     <img src="/profile.svg" alt="User" className="w-full h-full object-cover" />
                                 </div>
-                                <span className="text-sm font-semibold">HaajDefi</span>
+                                <span className="text-sm font-semibold truncate max-w-[100px]">
+                                    {user?.wallet?.address ? formatAddress(user.wallet.address) : (user?.email?.address || 'User')}
+                                </span>
                                 <ChevronDown
                                     size={14}
                                     className={`text-slate-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
@@ -183,8 +253,8 @@ export default function OperatorDashboard() {
                                 <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                     <button
                                         onClick={() => {
-                                            console.log("Logging out...");
-                                            // Add your actual logout logic here
+                                            logout();
+                                            setIsDropdownOpen(false);
                                         }}
                                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-600 flex items-center gap-2 transition-colors"
                                     >
@@ -219,7 +289,7 @@ export default function OperatorDashboard() {
                         <h1 className="text-2xl md:text-3xl font-semibold text-[#0F172A] mb-2 uppercase tracking-tight">Operator Dashboard</h1>
                         <div className="flex items-center gap-4 text-xs text-slate-500">
                             <div className="flex items-center gap-1">
-                                <span className="font-mono">0xf2ebe...23999</span>
+                                <span className="font-mono">{userAddress ? formatAddress(userAddress) : 'No address'}</span>
                             </div>
                             <span className="flex items-center gap-1">
                                 Network Status <LinkIcon size={12} className="text-purple-500" />
@@ -253,16 +323,20 @@ export default function OperatorDashboard() {
                             </div>
                             <div>
                                 <p className="text-xs font-medium opacity-90 uppercase tracking-wide">Active Agents</p>
-                                <h3 className="text-2xl  text-white">{hasAgents ? '2/5' : '0/0'}</h3>
+                                <h3 className="text-2xl  text-white">{agents.length}</h3>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* --- Agents Grid --- */}
-                {hasAgents ? (
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-64">
+                        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                    </div>
+                ) : agents.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {MOCK_AGENTS.map((agent) => (
+                        {agents.map((agent) => (
                             <AgentCard key={agent.id} agent={agent} />
                         ))}
                     </div>

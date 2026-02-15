@@ -2,8 +2,13 @@ import React, { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Upload,ChevronDown, Pencil } from "lucide-react";
+import { Upload, ChevronDown, Pencil, Loader2 } from "lucide-react";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { createWalletClient, custom, publicActions } from "viem";
+import { monadTestnet } from "viem/chains";
+import { MONACLAW_AGENT_REGISTRY_ADDRESS, MONACLAW_AGENT_REGISTRY_ABI } from "@/lib/constants";
 
+const BACKEND_URL = import.meta.env.VITE_PUBLIC_BASE_URL;
 // --- UI Components (Assumed standard Shadcn/Tailwind) ---
 import {
   Form,
@@ -19,7 +24,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 
 // --- Schema Definition ---
-// Using strings instead of enums as requested
 const formSchema = z.object({
   // Step 1: User Information
   agentName: z.string().min(1, { message: "Agent Name is required" }),
@@ -32,16 +36,21 @@ const formSchema = z.object({
   strategyDescription: z.string().min(10, { message: "Description must be at least 10 chars" }),
   riskLevel: z.string().min(1, { message: "Select a risk level" }),
   tradingInterval: z.string().min(1, { message: "Required" }),
-  minPosition: z.string().min(1, { message: "Required" }), // Keeping as string for input, parse later if needed
+  minPosition: z.string().min(1, { message: "Required" }),
   profitTarget: z.string().min(1, { message: "Required" }),
   stopLoss: z.string().min(1, { message: "Required" }),
+  readme: z.string().min(10, { message: "README must be at least 10 chars" }),
 });
 
 export default function DeployAgentPage() {
   const [currentTab, setCurrentTab] = useState(0);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployStep, setDeployStep] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { authenticated, login } = usePrivy();
+  const { wallets } = useWallets();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,13 +58,14 @@ export default function DeployAgentPage() {
       agentName: "",
       tokenSymbol: "",
       strategyType: "",
-      tradingGoal: "Grow portfolio aggressively", // Default selection
+      tradingGoal: "Grow portfolio aggressively",
       strategyDescription: "Buy when price breaks resistance & sell when momentum slows",
       riskLevel: "Low",
       tradingInterval: "1h",
       minPosition: "10",
       profitTarget: "40",
       stopLoss: "40",
+      readme: "Full details about my agent's strategy and goals...",
     },
   });
 
@@ -79,19 +89,99 @@ export default function DeployAgentPage() {
       valid = await form.trigger(["agentName", "tokenSymbol", "strategyType"]);
     } else if (currentTab === 1) {
       valid = await form.trigger([
-        "tradingGoal", "strategyDescription", "riskLevel", "tradingInterval", "minPosition", "profitTarget", "stopLoss"
+        "tradingGoal", "strategyDescription", "riskLevel", "tradingInterval", "minPosition", "profitTarget", "stopLoss", "readme"
       ]);
     }
-    
+
     if (valid) setCurrentTab((prev) => prev + 1);
   };
 
   const prevTab = () => setCurrentTab((prev) => prev - 1);
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log("Final Agent Payload:", data);
-    alert("Agent deployed! Check console for data.");
-    navigate("/dashboard");
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    if (!authenticated) {
+      login();
+      return;
+    }
+
+    const wallet = wallets[0];
+    if (!wallet) {
+      alert("No wallet connected. Please connect your wallet via Privy.");
+      return;
+    }
+
+    setIsDeploying(true);
+    try {
+      // 1. Pin to IPFS via API
+      setDeployStep("Uploading metadata to IPFS...");
+      const formData = new FormData();
+      if (data.avatar) {
+        formData.append("avatar", data.avatar);
+      }
+      if (data.readme) {
+        formData.append("readme", data.readme);
+      }
+
+      const metadata = {
+        agentName: data.agentName,
+        tokenSymbol: data.tokenSymbol,
+        strategyType: data.strategyType,
+        tradingGoal: data.tradingGoal,
+        strategyDescription: data.strategyDescription,
+        riskLevel: data.riskLevel,
+        tradingInterval: data.tradingInterval,
+        minPosition: data.minPosition,
+        profitTarget: data.profitTarget,
+        stopLoss: data.stopLoss,
+      };
+
+      formData.append("metadata", JSON.stringify(metadata));
+//import from env
+      const ipfsResponse = await fetch(`${BACKEND_URL}/ipfs`, {
+        method: "POST",
+        body: formData,
+      });
+      console.log("IPFS Deployment Response:", ipfsResponse);
+
+      if (!ipfsResponse.ok) {
+        throw new Error("Failed to pin metadata to IPFS");
+      }
+
+      const { cid, ipfsUrl } = await ipfsResponse.json();
+      console.log("IPFS Deployment Success:", cid);
+
+      // 2. Register on-chain
+      setDeployStep("Registering agent on Monad Testnet...");
+
+      const provider = await wallet.getEthereumProvider();
+      const walletClient = createWalletClient({
+        account: wallet.address as `0x${string}`,
+        chain: monadTestnet,
+        transport: custom(provider)
+      }).extend(publicActions);
+
+      const { request } = await walletClient.simulateContract({
+        address: MONACLAW_AGENT_REGISTRY_ADDRESS,
+        abi: MONACLAW_AGENT_REGISTRY_ABI,
+        functionName: "registerAgent",
+        args: [ipfsUrl],
+        account: wallet.address as `0x${string}`,
+      });
+
+      const hash = await walletClient.writeContract(request);
+      setDeployStep(`Transaction pending: ${hash.slice(0, 10)}...`);
+
+      await walletClient.waitForTransactionReceipt({ hash });
+
+      alert("Agent deployed successfully on-chain!");
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Deployment Error:", error);
+      alert(`Deployment failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsDeploying(false);
+      setDeployStep("");
+    }
   };
 
   // --- Helper Components for Selection Tiles ---
@@ -101,11 +191,10 @@ export default function DeployAgentPage() {
     return (
       <div
         onClick={() => form.setValue("strategyType", value)}
-        className={`cursor-pointer p-4 rounded-lg border text-left transition-all ${
-          isSelected
-            ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
-            : "bg-blue-50/30 border-blue-100 hover:border-blue-300"
-        }`}
+        className={`cursor-pointer p-4 rounded-lg border text-left transition-all ${isSelected
+          ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
+          : "bg-blue-50/30 border-blue-100 hover:border-blue-300"
+          }`}
       >
         <h4 className={`font-semibold text-sm ${isSelected ? "text-[#007BFF]" : "text-blue-900"}`}>{label}</h4>
         <p className="text-xs text-blue-400 mt-1">{desc}</p>
@@ -118,11 +207,10 @@ export default function DeployAgentPage() {
     return (
       <div
         onClick={() => form.setValue("riskLevel", value)}
-        className={`cursor-pointer p-4 rounded-lg border text-left transition-all ${
-          isSelected
-            ? "bg-blue-500 border-[#007BFF] text-white"
-            : "bg-blue-50 border-blue-200 text-blue-900 hover:bg-blue-100"
-        }`}
+        className={`cursor-pointer p-4 rounded-lg border text-left transition-all ${isSelected
+          ? "bg-blue-500 border-[#007BFF] text-white"
+          : "bg-blue-50 border-blue-200 text-blue-900 hover:bg-blue-100"
+          }`}
       >
         <h4 className="font-semibold text-sm">{label}</h4>
         <p className={`text-[10px] mt-1 ${isSelected ? "text-blue-100" : "text-blue-400"}`}>{desc}</p>
@@ -133,17 +221,18 @@ export default function DeployAgentPage() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-10  text-slate-800">
       <div className="w-full max-w-4xl">
-        
+
+
         {/* Progress Bar (Optional Visual) */}
         <div className="flex gap-2 mb-8 w-32">
-            <div className={`h-1 flex-1 rounded-full ${currentTab >= 0 ? "bg-[#007BFF]" : "bg-gray-200"}`}></div>
-            <div className={`h-1 flex-1 rounded-full ${currentTab >= 1 ? "bg-[#007BFF]" : "bg-gray-200"}`}></div>
-            <div className={`h-1 flex-1 rounded-full ${currentTab >= 2 ? "bg-[#007BFF]" : "bg-gray-200"}`}></div>
+          <div className={`h-1 flex-1 rounded-full ${currentTab >= 0 ? "bg-[#007BFF]" : "bg-gray-200"}`}></div>
+          <div className={`h-1 flex-1 rounded-full ${currentTab >= 1 ? "bg-[#007BFF]" : "bg-gray-200"}`}></div>
+          <div className={`h-1 flex-1 rounded-full ${currentTab >= 2 ? "bg-[#007BFF]" : "bg-gray-200"}`}></div>
         </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            
+
             {/* --- STEP 1: USER INFORMATION --- */}
             {currentTab === 0 && (
               <div className="space-y-8 animate-in fade-in duration-500">
@@ -200,25 +289,25 @@ export default function DeployAgentPage() {
                   {/* Right Column: Avatar Upload */}
                   <div className="md:col-span-1">
                     <FormLabel className="text-gray-500 uppercase text-xs mb-2 block">AVATAR (optional)</FormLabel>
-                    <div 
+                    <div
                       onClick={() => fileInputRef.current?.click()}
                       className="border-2 border-dashed border-blue-200 rounded-2xl h-64 flex flex-col items-center justify-center text-center p-6 cursor-pointer hover:bg-blue-50 transition-colors relative overflow-hidden"
                     >
                       {avatarPreview ? (
-                         <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover rounded-xl" />
+                        <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover rounded-xl" />
                       ) : (
                         <>
                           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-blue-500">
-                             <Upload size={20} />
+                            <Upload size={20} />
                           </div>
-                          <p className="text-xs text-gray-500">upload an avatar for your agent<br/>png, jpg, max 5mb.</p>
+                          <p className="text-xs text-gray-500">upload an avatar for your agent<br />png, jpg, max 5mb.</p>
                         </>
                       )}
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        className="hidden" 
-                        accept="image/png, image/jpeg" 
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/png, image/jpeg"
                         onChange={handleFileChange}
                       />
                     </div>
@@ -239,7 +328,7 @@ export default function DeployAgentPage() {
             {/* --- STEP 2: AGENT SETUP --- */}
             {currentTab === 1 && (
               <div className="space-y-8 animate-in fade-in duration-500">
-                 <div>
+                <div>
                   <h1 className="text-3xl font-medium text-slate-900 mb-6">Agent Setup</h1>
                   <h2 className="text-lg font-bold text-slate-700 mb-4">Trading Configuration</h2>
                 </div>
@@ -252,21 +341,20 @@ export default function DeployAgentPage() {
                     <FormItem>
                       <FormLabel className="text-gray-500">What's Your Trading Goal?</FormLabel>
                       <div className="flex flex-wrap gap-3 mt-2">
-                         {["Grow portfolio aggressively", "Test strategies", "Steady passive income"].map((goal) => (
-                           <button
-                             key={goal}
-                             type="button"
-                             onClick={() => field.onChange(goal)}
-                             className={`px-4 py-2 rounded-full text-sm border flex items-center gap-2 transition-all ${
-                               field.value === goal 
-                               ? "bg-[#007BFF] text-white border-[#007BFF]" 
-                               : "bg-white text-gray-500 border-gray-200 hover:border-blue-300"
-                             }`}
-                           >
-                             <div className={`w-2 h-2 rounded-full ${field.value === goal ? "bg-white" : "bg-gray-300"}`}></div>
-                             {goal}
-                           </button>
-                         ))}
+                        {["Grow portfolio aggressively", "Test strategies", "Steady passive income"].map((goal) => (
+                          <button
+                            key={goal}
+                            type="button"
+                            onClick={() => field.onChange(goal)}
+                            className={`px-4 py-2 rounded-full text-sm border flex items-center gap-2 transition-all ${field.value === goal
+                              ? "bg-[#007BFF] text-white border-[#007BFF]"
+                              : "bg-white text-gray-500 border-gray-200 hover:border-blue-300"
+                              }`}
+                          >
+                            <div className={`w-2 h-2 rounded-full ${field.value === goal ? "bg-white" : "bg-gray-300"}`}></div>
+                            {goal}
+                          </button>
+                        ))}
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -282,9 +370,9 @@ export default function DeployAgentPage() {
                       <FormLabel className="text-gray-500">Choose your strategy</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Textarea 
-                            className="pr-10 pt-4 rounded-xl border-gray-200 bg-white min-h-15 resize-none flex items-center" 
-                            {...field} 
+                          <Textarea
+                            className="pr-10 pt-4 rounded-xl border-gray-200 bg-white min-h-15 resize-none flex items-center"
+                            {...field}
                           />
                           <div className="absolute right-3 top-3 text-blue-500 p-1 bg-blue-50 rounded-md">
                             <Pencil size={14} />
@@ -298,68 +386,87 @@ export default function DeployAgentPage() {
 
                 {/* Risk Level */}
                 <div className="space-y-3">
-                   <FormLabel className="text-gray-800 font-semibold text-lg">Risk Level</FormLabel>
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <RiskCard label="Low" desc="Conversion 75%. Max 3 position" value="Low" />
-                      <RiskCard label="Medium" desc="Conversion 60%. Max 5 position" value="Medium" />
-                      <RiskCard label="High" desc="Aggressively 50% min valid." value="High" />
-                   </div>
+                  <FormLabel className="text-gray-800 font-semibold text-lg">Risk Level</FormLabel>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <RiskCard label="Low" desc="Conversion 75%. Max 3 position" value="Low" />
+                    <RiskCard label="Medium" desc="Conversion 60%. Max 5 position" value="Medium" />
+                    <RiskCard label="High" desc="Aggressively 50% min valid." value="High" />
+                  </div>
                 </div>
 
                 {/* Numeric Inputs Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                   <FormField
-                      control={form.control}
-                      name="tradingInterval"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs uppercase text-gray-500 font-bold">TRADING INTERVAL</FormLabel>
-                          <FormControl>
-                             <div className="relative">
-                               <Input {...field} className="bg-blue-50/50 border-blue-100 text-slate-700" />
-                               <ChevronDown className="absolute right-3 top-3 text-gray-400 w-4 h-4" />
-                             </div>
-                          </FormControl>
-                        </FormItem>
-                      )}
-                   />
-                   <FormField
-                      control={form.control}
-                      name="minPosition"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs uppercase text-gray-500 font-bold">MIN POSITION (USDC)</FormLabel>
-                          <FormControl>
-                             <Input {...field} className="bg-blue-50/50 border-blue-100 text-slate-700" />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                   />
-                   <FormField
-                      control={form.control}
-                      name="profitTarget"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs uppercase text-gray-500 font-bold">PROFIT</FormLabel>
-                          <FormControl>
-                             <Input {...field} className="bg-white border-gray-200 text-slate-700" />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                   />
-                   <FormField
-                      control={form.control}
-                      name="stopLoss"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs uppercase text-gray-500 font-bold">STOP LOSS</FormLabel>
-                          <FormControl>
-                             <Input {...field} className="bg-white border-gray-200 text-slate-700" />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                   />
+                  <FormField
+                    control={form.control}
+                    name="tradingInterval"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs uppercase text-gray-500 font-bold">TRADING INTERVAL</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input {...field} className="bg-blue-50/50 border-blue-100 text-slate-700" />
+                            <ChevronDown className="absolute right-3 top-3 text-gray-400 w-4 h-4" />
+                          </div>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="minPosition"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs uppercase text-gray-500 font-bold">MIN POSITION (USDC)</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-blue-50/50 border-blue-100 text-slate-700" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="profitTarget"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs uppercase text-gray-500 font-bold">PROFIT</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-white border-gray-200 text-slate-700" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="stopLoss"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs uppercase text-gray-500 font-bold">STOP LOSS</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-white border-gray-200 text-slate-700" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                 </div>
+
+                {/* Agent README */}
+                <FormField
+                  control={form.control}
+                  name="readme"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-500">Agent README (Markdown supported)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="# Agent Blueprint\nDescribe your agent's personality, mission, and technical details here..."
+                          className="rounded-xl border-gray-200 bg-white min-h-[200px] resize-y"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="flex gap-4 pt-4">
                   <Button type="button" onClick={nextTab} className="bg-[#007BFF] hover:bg-blue-700 text-white rounded-xl px-8 py-6">
@@ -375,11 +482,11 @@ export default function DeployAgentPage() {
             {/* --- STEP 3: SUMMARY --- */}
             {currentTab === 2 && (
               <div className="space-y-8 animate-in fade-in duration-500">
-                
+
                 {/* Summary Card */}
                 <div className="bg-blue-50/50 rounded-2xl p-8 border border-blue-100">
                   <h2 className="text-2xl font-semibold text-slate-900 mb-6">Agent Summary</h2>
-                  
+
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Name</span>
@@ -410,23 +517,40 @@ export default function DeployAgentPage() {
 
                 {/* What Next Box */}
                 <div className="bg-blue-50/50 rounded-2xl p-8 border border-blue-100 border-dashed">
-                   <h3 className="text-sm font-bold text-gray-700 uppercase mb-4">WHAT NEXT:</h3>
-                   <ul className="space-y-3 text-sm text-gray-500">
-                     <li>Your agent's token will be deployed on Monad via Nad.Fun</li>
-                     <li>A Safe wallet will be created on Polygon for trading</li>
-                     <li>You'll get a deposit address to fund your agent</li>
-                     <li>Trading starts automatically once funded ($10+ USDC)</li>
-                   </ul>
+                  <h3 className="text-sm font-bold text-gray-700 uppercase mb-4">WHAT NEXT:</h3>
+                  <ul className="space-y-3 text-sm text-gray-500">
+                    <li>Your agent's token will be deployed on Monad via Nad.Fun</li>
+                    <li>A Safe wallet will be created on Polygon for trading</li>
+                    <li>You'll get a deposit address to fund your agent</li>
+                    <li>Trading starts automatically once funded ($10+ USDC)</li>
+                  </ul>
                 </div>
 
                 <div className="flex gap-4 pt-4">
-                  <Button type="submit" className="bg-[#007BFF] hover:bg-blue-700 text-white rounded-xl px-8 py-6 w-32">
-                    Continue
+                  <Button
+                    type="submit"
+                    disabled={isDeploying}
+                    className="bg-[#007BFF] hover:bg-blue-700 text-white rounded-xl px-8 py-6 w-48 flex items-center justify-center gap-2"
+                  >
+                    {isDeploying ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Deploying...
+                      </>
+                    ) : (
+                      "Confirm & Deploy"
+                    )}
                   </Button>
                   <Button type="button" onClick={prevTab} variant="outline" className="rounded-xl px-8 py-6 border-gray-200 text-gray-600 w-32">
                     Back
                   </Button>
                 </div>
+
+                {isDeploying && (
+                  <div className="text-center text-sm text-blue-500 animate-pulse font-medium">
+                    {deployStep}
+                  </div>
+                )}
               </div>
             )}
 
