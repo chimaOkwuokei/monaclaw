@@ -136,7 +136,7 @@ export default function DeployAgentPage() {
       };
 
       formData.append("metadata", JSON.stringify(metadata));
-//import from env
+      //import from env
       const ipfsResponse = await fetch(`${BACKEND_URL}/ipfs`, {
         method: "POST",
         body: formData,
@@ -318,7 +318,12 @@ export default function DeployAgentPage() {
                   <Button type="button" onClick={nextTab} className="bg-[#007BFF] hover:bg-blue-700 text-white rounded-xl px-8 py-6">
                     Continue
                   </Button>
-                  <Button type="button" variant="outline" className="rounded-xl px-8 py-6 border-gray-200 text-gray-600">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate("/dashboard")}
+                    className="rounded-xl px-8 py-6 border-gray-200 text-gray-600"
+                  >
                     Cancel
                   </Button>
                 </div>
