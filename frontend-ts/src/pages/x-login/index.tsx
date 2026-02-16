@@ -1,8 +1,18 @@
 import { Key, Wallet, Bot, } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { usePrivy } from "@privy-io/react-auth";
+import { useEffect } from "react";
 
 export default function XLogin() {
     const navigate = useNavigate();
+    const { login, authenticated } = usePrivy();
+
+    useEffect(() => {
+        if (authenticated) {
+            navigate("/dashboard");
+        }
+    }, [authenticated, navigate]);
+
     return (
         <section className="min-h-screen bg-white flex flex-col text-slate-900">
 
@@ -25,7 +35,10 @@ export default function XLogin() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <button onClick={() => navigate('/x-login')} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]">
+                        <button
+                            onClick={login}
+                            className="bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]"
+                        >
                             Connect
                         </button>
                     </div>
@@ -34,12 +47,6 @@ export default function XLogin() {
 
             {/* --- Main Content --- */}
             <main className="flex-1 flex flex-col items-center justify-center text-center px-4 -mt-20">
-
-                {/* Central Logo */}
-                {/* <div className="mb-8 relative"> */}
-                    {/* Decorative blur behind logo */}
-                    {/* <img src="/x.svg" alt="" />
-                </div> */}
 
                 {/* Badge */}
                 <div className="mb-6 inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-50 border border-blue-100 text-blue-600 text-[10px] font-bold uppercase tracking-wider">
@@ -58,7 +65,10 @@ export default function XLogin() {
                 </p>
 
                 {/* CTA Button */}
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3 shadow-lg shadow-blue-200 transition-all hover:scale-105">
+                <button
+                    onClick={login}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3 shadow-lg shadow-blue-200 transition-all hover:scale-105"
+                >
                     {/* Simple X Logo SVG */}
                     <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
